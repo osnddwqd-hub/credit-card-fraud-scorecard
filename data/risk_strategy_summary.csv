@@ -1,0 +1,5 @@
+Score_Range,Risk_Level,Recommended_Action,Interpretation
+0-300,High Risk,Block Transaction,Extremely concentrated fraud risk
+301-500,Medium Risk,Manual Review,Elevated risk requiring human verification
+501-1000,Low Risk,Approve,Low estimated fraud risk
+
