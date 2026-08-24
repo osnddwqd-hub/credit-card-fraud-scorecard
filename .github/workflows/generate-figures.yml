@@ -87,23 +87,32 @@ jobs:
             echo "Verified figures/${figure}"
           done
 
-      - name: Upload figures as workflow artifact
+      - name: Save reproduced metrics and update README
+        run: |
+          mkdir -p data/reproduced
+          cp data/processed/metrics.json data/reproduced/metrics.json
+          cp data/processed/score_band_analysis.csv data/reproduced/score_band_analysis.csv
+          python scripts/update_readme_metrics.py
+
+      - name: Upload figures and metrics as workflow artifact
         uses: actions/upload-artifact@v4
         with:
           name: scorecard-figures
-          path: figures/*.png
+          path: |
+            figures/*.png
+            data/reproduced/metrics.json
+            data/reproduced/score_band_analysis.csv
           if-no-files-found: error
 
-      - name: Commit generated figures
+      - name: Commit generated figures and reproduced metrics
         run: |
           git checkout -- notebooks
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add figures/*.png
+          git add README.md figures/*.png data/reproduced/metrics.json data/reproduced/score_band_analysis.csv
           if git diff --cached --quiet; then
-            echo "No figure changes to commit."
+            echo "No generated result changes to commit."
           else
-            git commit -m "Generate scorecard analysis figures"
+            git commit -m "Synchronize reproduced scorecard metrics"
             git push
           fi
-
