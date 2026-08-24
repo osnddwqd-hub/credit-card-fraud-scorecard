@@ -1,0 +1,13 @@
+{
+  "roc_auc": 0.961994461194297,
+  "ks": 0.8400760159890238,
+  "score_min": 0,
+  "score_median": 364.0,
+  "score_max": 561,
+  "test_transactions": 85443,
+  "test_fraud_cases": 148,
+  "score_at_most_500_transactions": 85156,
+  "score_at_most_500_fraud": 148,
+  "score_at_most_500_share_pct": 99.6641035544164,
+  "score_at_most_500_fraud_capture_pct": 100.0
+}
