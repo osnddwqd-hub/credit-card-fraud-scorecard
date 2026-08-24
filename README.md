@@ -14,16 +14,9 @@ score, risk tier and recommended action.
   higher fraud risk.
 - Produces a deployable scoring bundle and transaction decision list.
 
-Results from the completed analysis:
-
-| Metric | Result |
-|---|---:|
-| ROC-AUC | **0.9807** |
-| KS statistic | **0.9364** |
-| Score range observed | **94–865** |
-| Median score | **≈699** |
-| Transactions below 500 | **≈5.02%** |
-| Fraud captured below 500 | **≈96.43%** |
+<!-- REPRODUCED_METRICS_START -->
+The reproducible metrics from the latest automated run will be inserted here.
+<!-- REPRODUCED_METRICS_END -->
 
 ## Business Problem
 
@@ -84,10 +77,8 @@ V14, V12, V3, V4, V11, V10, V17, V2, V16, V27
 ### 3. Logistic scorecard
 
 A class-weighted logistic-regression model is trained on WOE-transformed
-features. The hold-out evaluation produced:
-
-- ROC-AUC: 0.9807
-- KS: 0.9364
+features. The current hold-out ROC-AUC and KS results are reported in the
+reproduced-results table above.
 
 ### 4. Score scaling
 
@@ -106,18 +97,9 @@ WOE definitions and score parameters are stored together in
 
 ## Score-band Findings
 
-| Score band | Transactions | Fraud | Fraud rate |
-|---:|---:|---:|---:|
-| 0–200 | 60 | 47 | 78.33% |
-| 201–300 | 29 | 3 | 10.34% |
-| 301–400 | 136 | 2 | 1.47% |
-| 401–500 | 936 | 2 | 0.21% |
-| 501–600 | 3,223 | 1 | 0.03% |
-
-The sharp decline in fraud rate as score increases shows that the score
-successfully ranks transactions by risk. In the completed experiment, reviewing
-or blocking scores below 500 covered about 5.02% of transactions while capturing
-about 96.43% of fraud cases in the evaluated sample.
+<!-- REPRODUCED_BANDS_START -->
+The reproduced score-band table from the latest automated run will be inserted here.
+<!-- REPRODUCED_BANDS_END -->
 
 ## Repository Structure
 
@@ -207,4 +189,3 @@ After all notebooks are run, the project produces:
 
 Mathematics master's student building practical projects in data analysis,
 statistical modeling and business decision support.
-
