@@ -176,6 +176,26 @@ def evaluate(model, X_woe: pd.DataFrame, y_true: pd.Series) -> dict:
     }
 
 
+def restore_population_probability(
+    balanced_probability,
+    population_bad_rate: float,
+) -> np.ndarray:
+    """Correct probabilities from a balanced-weight model to the real prior.
+
+    ``class_weight='balanced'`` gives the two target classes equal total
+    training weight, so its probability output is expressed under an effective
+    bad-class prior of 0.5.  This prior-odds correction restores the observed
+    population fraud rate without changing transaction ranking, ROC-AUC or KS.
+    """
+    if not 0 < population_bad_rate < 1:
+        raise ValueError("population_bad_rate must be strictly between 0 and 1")
+    p = np.clip(np.asarray(balanced_probability, dtype=float), 1e-12, 1 - 1e-12)
+    balanced_odds = p / (1 - p)
+    population_odds = population_bad_rate / (1 - population_bad_rate)
+    corrected_odds = balanced_odds * population_odds
+    return corrected_odds / (1 + corrected_odds)
+
+
 def probability_to_score(
     probability,
     params: ScoreParameters | None = None,
@@ -212,13 +232,20 @@ def risk_decision(score) -> pd.DataFrame:
     return pd.DataFrame({"Risk_Level": level, "Recommended_Action": action}, index=score.index)
 
 
-def build_bundle(model, definitions, features, score_parameters=None) -> dict:
+def build_bundle(
+    model,
+    definitions,
+    features,
+    score_parameters=None,
+    population_bad_rate: float | None = None,
+) -> dict:
     params = score_parameters or ScoreParameters()
     return {
         "model": model,
         "woe_definitions": definitions,
         "features": list(features),
         "score_parameters": params,
+        "population_bad_rate": population_bad_rate,
         "version": "1.0",
     }
 
@@ -236,12 +263,18 @@ def load_bundle(path: str | Path) -> dict:
 def score_transactions(df: pd.DataFrame, bundle: dict) -> pd.DataFrame:
     """Return the original transactions with probability, score and action."""
     X_woe = transform_woe(df, bundle["woe_definitions"])
-    probability = bundle["model"].predict_proba(X_woe)[:, 1]
+    raw_probability = bundle["model"].predict_proba(X_woe)[:, 1]
+    population_bad_rate = bundle.get("population_bad_rate")
+    probability = (
+        restore_population_probability(raw_probability, population_bad_rate)
+        if population_bad_rate is not None
+        else raw_probability
+    )
     score = probability_to_score(probability, bundle["score_parameters"])
     decisions = risk_decision(score)
     result = df.copy().reset_index(drop=True)
+    result["Raw_Model_Probability"] = raw_probability
     result["Fraud_Probability"] = probability
     result["Risk_Score"] = score
     result = pd.concat([result, decisions.reset_index(drop=True)], axis=1)
     return result
-
