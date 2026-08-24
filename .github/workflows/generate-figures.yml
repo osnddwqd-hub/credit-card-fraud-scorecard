@@ -1,0 +1,109 @@
+name: Generate project figures
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/generate-figures.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: generate-scorecard-figures
+  cancel-in-progress: false
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+          python -m pip install jupyter nbconvert
+
+      - name: Download public Kaggle dataset
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import shutil
+          import kagglehub
+
+          cache_dir = Path(kagglehub.dataset_download("mlg-ulb/creditcardfraud"))
+          matches = list(cache_dir.rglob("creditcard.csv"))
+          if not matches:
+              raise FileNotFoundError(f"creditcard.csv not found under {cache_dir}")
+
+          target = Path("data/raw/creditcard.csv")
+          target.parent.mkdir(parents=True, exist_ok=True)
+          shutil.copy2(matches[0], target)
+          print(f"Dataset copied to {target}; size={target.stat().st_size:,} bytes")
+          PY
+
+      - name: Execute notebooks in order
+        env:
+          MPLBACKEND: Agg
+        run: |
+          for notebook in \
+            notebooks/01_EDA.ipynb \
+            notebooks/02_Feature_Engineering.ipynb \
+            notebooks/03_Scorecard_Model.ipynb \
+            notebooks/04_Risk_Scoring.ipynb
+          do
+            echo "Executing ${notebook}"
+            jupyter nbconvert \
+              --to notebook \
+              --execute \
+              --inplace \
+              --ExecutePreprocessor.timeout=1800 \
+              "${notebook}"
+          done
+
+      - name: Verify generated figures
+        run: |
+          expected=(
+            fraud_distribution.png
+            amount_distribution.png
+            iv_ranking.png
+            roc_curve.png
+            ks_curve.png
+            risk_score_distribution.png
+            score_band_fraud_rate.png
+          )
+          for figure in "${expected[@]}"; do
+            test -s "figures/${figure}"
+            echo "Verified figures/${figure}"
+          done
+
+      - name: Upload figures as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: scorecard-figures
+          path: figures/*.png
+          if-no-files-found: error
+
+      - name: Commit generated figures
+        run: |
+          git checkout -- notebooks
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add figures/*.png
+          if git diff --cached --quiet; then
+            echo "No figure changes to commit."
+          else
+            git commit -m "Generate scorecard analysis figures"
+            git push
+          fi
+
